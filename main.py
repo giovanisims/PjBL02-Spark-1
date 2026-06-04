@@ -103,11 +103,11 @@ def main():
     
     log_result(8, "Preço máximo e mínimo por categoria e por ano (PairRDD)", final_stats_list)
 
-# (1,0 ponto) O país com o valor máximo de exportação utilizando PairRDD. O retorno deverá
-# conter chave (país) e valor.
+# (1,5 ponto) Retornar um único valor para PairRDD contendo o país com a maior exportação
+# (Flow=Export). A saída esperada é chave(país, flow) e valor.
 
-    max_export_rdd = data.filter(lambda transaction: transaction[4] == "Export" and transaction[5] != "") \
-                     .map(lambda transaction: (transaction[0], float(transaction[5]))) \
+    max_export_rdd = data.filter(lambda transaction: transaction[4] == "Export" and transaction[2] == "TOTAL" and transaction[5] != "") \
+                     .map(lambda transaction: ((transaction[0], transaction[4]), float(transaction[5]))) \
                      .aggregateByKey(0.0, lambda total_value, current_value: total_value + current_value, lambda partition1, partition2: partition1 + partition2)
     
     max_export = cast(RDD[Tuple[Any, float]], max_export_rdd).max(key=lambda trade: cast(Any, trade[1]))
@@ -131,7 +131,7 @@ def main():
     max_price_kg_details = cast(RDD[Tuple[float, Any]], max_price_kg_rdd).max(key=lambda trade: cast(Any, trade[0]))
     log_result(11, "Maior preço/kg exportação (PairRDD)", max_price_kg_details)
 
-    print("\n--- Resultados individuais exportados para a pasta results/ ---")
+    print("\n--- Results saved to file ---")
 
     sc.stop()
 
