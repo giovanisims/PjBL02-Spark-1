@@ -102,22 +102,42 @@ def main():
         display_val = trade_summary[1]
         final_stats_list.append((display_key, display_val))
     
-    print(f"Resultado: {final_stats_list}")
+    print(f"Resultado (primeiros 10 itens): {final_stats_list[:10]}")
     export_results.append(f"\n--- 8: Preço máximo e mínimo por categoria e por ano (PairRDD) ---\nResultado: {final_stats_list}\n")
 
+# (1,0 ponto) O país com o valor máximo de exportação utilizando PairRDD. O retorno deverá
+    print("\n--- 9: País com valor máximo de exportação (PairRDD) ---")
+    max_export_rdd = data.filter(lambda transaction: transaction[4] == "Export" and transaction[5] != "") \
+                     .map(lambda transaction: (transaction[0], float(transaction[5]))) \
+                     .aggregateByKey(0.0, lambda total_value, current_value: total_value + current_value, lambda partition1, partition2: partition1 + partition2)
+    
+    max_export = cast(RDD[Tuple[Any, float]], max_export_rdd).max(key=lambda trade: cast(Any, trade[1]))
+    print(f"Resultado: {max_export}")
+    export_results.append(f"\n--- 9: País com valor máximo de exportação (PairRDD) ---\nResultado: {max_export}\n")
 
+# (1,0 ponto) O preço mínimo por país e por ano, ordenado por ano. Utilizar PairRDD.
+    print("\n--- 10: Preço mínimo por país e ano (PairRDD) ---")
+    min_price_country_PairRDD = data.filter(lambda transaction: transaction[5] != "") \
+                            .map(lambda transaction: ((transaction[1], transaction[0]), float(transaction[5]))) \
+                            .aggregateByKey(float('inf'), lambda total_min, current_val: min(total_min, current_val), lambda partition1, partition2: min(partition1, partition2))
     
-    final_stats_list = []
-    for item in stats_list:
-        display_key = (item[0][1], item[0][2])
-        display_val = item[1]
-        final_stats_list.append((display_key, display_val))
+    min_price_top_10 = min_price_country_PairRDD.takeOrdered(10, key=lambda trade: cast(Any, trade[0]))
+    print(f"Resultado (primeiros 10): {min_price_top_10}")
+    export_results.append(f"\n--- 10: Preço mínimo por país e ano (PairRDD) ---\nResultado: {min_price_top_10}\n")
+
+# (1,0 ponto) A transação com o maior preço por kg na categoria Exportação. O retorno deverá 
+    print("\n--- 11: Maior preço/kg exportação (PairRDD) ---")
+    max_price_kg_rdd = data.filter(lambda transaction: transaction[4] == "Export" and transaction[6] != "" and float(transaction[6]) > 0 and transaction[5] != "") \
+                       .map(lambda transaction: (float(transaction[5]) / float(transaction[6]), (transaction[1], transaction[0], transaction[9])))
     
-    print(f"Resultado: {final_stats_list}")
-    export_results.append(f"\n--- 8: Preço máximo e mínimo por categoria e por ano (PairRDD) ---\nResultado: {final_stats_list}\n")
+    max_price_kg_details = cast(RDD[Tuple[float, Any]], max_price_kg_rdd).max(key=lambda trade: cast(Any, trade[0]))
+    print(f"Resultado: {max_price_kg_details}")
+    export_results.append(f"\n--- 11: Maior preço/kg exportação (PairRDD) ---\nResultado: {max_price_kg_details}\n")
 
     with open("results.txt", "w", encoding="utf-8") as f:
+
         f.writelines(export_results)
+
     print("\n--- Resultados exportados para results.txt ---")
 
     sc.stop()
